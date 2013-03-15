@@ -1,0 +1,30 @@
+<ASSEMBLER_INFO>
+ <VERSION>2.1.42</VERSION>
+ <DEVICE>ATmega8</DEVICE>
+ <WORKING_DIR>C:\Users\azure\Documents\Firmware\clock</WORKING_DIR>
+ <INCLUDE_PATH>
+  <DIR>C:\Program Files (x86)\Atmel\AVR Tools\AvrAssembler2\Appnotes</DIR>
+ </INCLUDE_PATH>
+ <SOURCE_FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</SOURCE_FILE>
+ <INCLUDED_FILES>
+  <FILE>C:\Program Files (x86)\Atmel\AVR Tools\AvrAssembler2\Appnotes\m8def.inc</FILE>
+ </INCLUDED_FILES>
+ <OBJECT_FILES>
+  <FILE>C:\Users\azure\Documents\Firmware\clock\clock.obj</FILE>
+ </OBJECT_FILES>
+ <HEX_FILES>
+  <FILE>C:\Users\azure\Documents\Firmware\clock\clock.hex</FILE>
+ </HEX_FILES>
+ <OUTPUT_FILES>
+  <FILE>C:\Users\azure\Documents\Firmware\clock\clock.map</FILE>
+ </OUTPUT_FILES>
+ <LABELS>
+  <Start><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>7</LINE></Start>
+  <Loop><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>20</LINE></Loop>
+  <L10><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>26</LINE></L10>
+  <Delay><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>34</LINE></Delay>
+  <L03><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>36</LINE></L03>
+  <L02><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>37</LINE></L02>
+  <L01><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>38</LINE></L01>
+ </LABELS>
+</ASSEMBLER_INFO>
