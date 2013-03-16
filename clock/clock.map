@@ -1,5 +1,5 @@
 
-AVRASM ver. 2.1.42  C:\Users\azure\Documents\Firmware\clock\clock.asm Fri Mar 15 21:49:07 2013
+AVRASM ver. 2.1.42  C:\Users\azure\Documents\Firmware\clock\clock.asm Sat Mar 16 12:17:50 2013
 
 
 EQU  SIGNATURE_000 0000001e
@@ -508,9 +508,11 @@ EQU  TWIaddr      00000011
 EQU  SPMRaddr     00000012
 EQU  INT_VECTORS_SIZE 00000013
 CSEG Start        00000001
-CSEG Loop         0000000a
-CSEG L10          0000000e
-CSEG Delay        00000015
-CSEG L03          00000016
-CSEG L02          00000017
-CSEG L01          00000018
+CSEG Main         00000009
+CSEG LoopM        0000000c
+CSEG table        00000027
+CSEG Loop         0000000e
+CSEG Delay        00000018
+CSEG L03          0000001b
+CSEG L02          0000001c
+CSEG L01          0000001d

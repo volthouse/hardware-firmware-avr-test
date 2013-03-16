@@ -8,6 +8,7 @@
  <SOURCE_FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</SOURCE_FILE>
  <INCLUDED_FILES>
   <FILE>C:\Program Files (x86)\Atmel\AVR Tools\AvrAssembler2\Appnotes\m8def.inc</FILE>
+  <FILE>C:\Users\azure\Documents\Firmware\clock\macros.inc</FILE>
  </INCLUDED_FILES>
  <OBJECT_FILES>
   <FILE>C:\Users\azure\Documents\Firmware\clock\clock.obj</FILE>
@@ -19,12 +20,14 @@
   <FILE>C:\Users\azure\Documents\Firmware\clock\clock.map</FILE>
  </OUTPUT_FILES>
  <LABELS>
-  <Start><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>7</LINE></Start>
-  <Loop><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>20</LINE></Loop>
-  <L10><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>26</LINE></L10>
-  <Delay><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>34</LINE></Delay>
-  <L03><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>36</LINE></L03>
-  <L02><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>37</LINE></L02>
-  <L01><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>38</LINE></L01>
+  <Start><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>12</LINE></Start>
+  <Main><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>25</LINE></Main>
+  <LoopM><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>29</LINE></LoopM>
+  <table><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>65</LINE></table>
+  <Loop><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>31</LINE></Loop>
+  <Delay><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>45</LINE></Delay>
+  <L03><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>50</LINE></L03>
+  <L02><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>51</LINE></L02>
+  <L01><FILE>C:\Users\azure\Documents\Firmware\clock\clock.asm</FILE><LINE>52</LINE></L01>
  </LABELS>
 </ASSEMBLER_INFO>
