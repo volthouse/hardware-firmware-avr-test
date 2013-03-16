@@ -1,2 +1,0 @@
-@ECHO OFF
-"C:\Program Files (x86)\Atmel\AVR Tools\AvrAssembler2\avrasm2.exe" -S "C:\Users\azure\Documents\Firmware\alarmclock\labels.tmp" -fI -W+ie -I "C:\Users\azure\Documents\Firmware\alarmclock" -C V2E -o "C:\Users\azure\Documents\Firmware\alarmclock\AlarmClock.hex" -d "C:\Users\azure\Documents\Firmware\alarmclock\AlarmClock.obj" -e "C:\Users\azure\Documents\Firmware\alarmclock\AlarmClock.eep" -m "C:\Users\azure\Documents\Firmware\alarmclock\AlarmClock.map" "C:\Users\azure\Documents\Firmware\alarmclock\AlarmClock.asm"
