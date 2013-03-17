@@ -1,0 +1,2 @@
+@ECHO OFF
+"C:\Program Files (x86)\Atmel\AVR Tools\AvrAssembler2\avrasm2.exe" -S "C:\Users\azure\Documents\Firmware\serial\labels.tmp" -fI -W+ie -C V2E -o "C:\Users\azure\Documents\Firmware\serial\serial.hex" -d "C:\Users\azure\Documents\Firmware\serial\serial.obj" -e "C:\Users\azure\Documents\Firmware\serial\serial.eep" -m "C:\Users\azure\Documents\Firmware\serial\serial.map" "C:\Users\azure\Documents\Firmware\serial\serial.asm"
