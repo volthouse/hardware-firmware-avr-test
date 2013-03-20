@@ -1,15 +1,21 @@
-.MACRO Vector ;(Adresse)
-        ldi     @0H, HIGH(2*@1)
-        ldi     @0L, LOW(2*@1)
-		;LDI ZH,HIGH(2*table)
-   		;LDI ZL,LOW(2*table)
-.ENDMACRO
+; -----------------------------------------------------------------------------
+.macro	ZTab
+		ldi	zl,low(@0*2)
+		ldi	zh,high(@0*2)
+		add	zl,@1
+		adc	zh,Null		
+.endmacro
 
-.MACRO VectorR ;(Adresse)
-        ldi     @0H, HIGH(@1)
-        ldi     @0L, LOW(@1)
-.ENDMACRO
+; -----------------------------------------------------------------------------
+.macro	Vector
+		ldi	@0l,low(@1)
+		ldi	@0h,high(@1)
+.endmacro
 
-.MACRO AddK
-		adiw	@0H, @1
-.ENDMACRO
+; -----------------------------------------------------------------------------
+.macro	Plus
+		add	@0l,@1
+		adc	@0h,Null		
+.endmacro
+
+; -----------------------------------------------------------------------------
