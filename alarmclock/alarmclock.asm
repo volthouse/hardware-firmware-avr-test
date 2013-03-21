@@ -1,106 +1,150 @@
 .include "m8def.inc"
 .include "macros.inc"
  
-.def temp1 = r16
-.def temp2 = r17
-.def temp3 = r18
-.def Flag  = r19
+; Register definition
+.def Null	= r15								; := 0
+.def temp1  = r16                             	
+.def temp2	= r17
+.def temp3	= r18
+.def char 	= r19                              	; recieved char    
+.def Flag   = r20
  
 .def SubCount = r21
 .def Sekunden = r22
 .def Minuten  = r23
 .def Stunden  = r24 
+ 
+; Constants
+.equ F_CPU 	= 16000000                          ; System clock (Hz)
+.equ BAUD  	= 9600                              ; Baudrate
 
-                              					
-.def zeichen = r17                              ; in diesem Register wird das Zeichen an die
-                                                ; Ausgabefunktion übergeben
+.equ cesc	= 0x1B								; ESCAPE character
+.equ ccr	= 0x0D								; Carriage return character 
+.equ clf	= 0x0A								; Line feed character
+.equ cnull	= 0x00
+
+; Baudrate calculations
+.equ UBRR_VAL   = ((F_CPU+BAUD*8)/(BAUD*16)-1)  ; round
+.equ BAUD_REAL  = (F_CPU/(16*(UBRR_VAL+1)))     ; real Baudrate
+.equ BAUD_ERROR = ((BAUD_REAL*1000)/BAUD-1000)  ; error (Promille)
  
-.equ F_CPU = 16000000                           ; Systemtakt in Hz
-.equ BAUD  = 9600                               ; Baudrate
- 
-; Berechnungen
-.equ UBRR_VAL   = ((F_CPU+BAUD*8)/(BAUD*16)-1)  ; clever runden
-.equ BAUD_REAL  = (F_CPU/(16*(UBRR_VAL+1)))     ; Reale Baudrate
-.equ BAUD_ERROR = ((BAUD_REAL*1000)/BAUD-1000)  ; Fehler in Promille
- 
-.if ((BAUD_ERROR>10) || (BAUD_ERROR<-10))       ; max. +/-10 Promille Fehler
+; Data
+.dseg
+CmdBuffer: .BYTE 10 							; Usart receiver buffer
+
+
+.if ((BAUD_ERROR>10) || (BAUD_ERROR<-10))       ; max. +/-10 Promille error
   .error "Systematischer Fehler der Baudrate grösser 1 Prozent und damit zu hoch!"
 .endif
 
 
 
-
+.cseg
 
 .org 0x0000
-        rjmp    main             ; Reset Handler
+        rjmp    Reset             ; Reset Handler
 .org OC1Aaddr
         rjmp    timer1_compare   ; Timer Compare Handler
- 
- 
-main:
-        ldi     temp1, HIGH(RAMEND)
-        out     SPH, temp1
-        ldi     temp1, LOW(RAMEND)  ; Stackpointer initialisieren
-        out     SPL, temp1
- 
- 		;*** PORTS ***
-									; PORTD initialisieren
- 		ldi     temp1, 0b11111011
-	    out     DDRD, temp1
-		ldi     temp1, 0x00
-	    out     PORTD, temp1
+.org URXCaddr                                   ; Usart Interruptvector
+        rjmp URX_INT
 
-	    ldi     r16,0x00
-	    out     PORTD,r16
-     	
-		;*** USART ***				; Baudrate einstellen
  
-	    ldi     temp1, HIGH(UBRR_VAL)
-	    out     UBRRH, temp1
-	    ldi     temp1, LOW(UBRR_VAL)
-	    out     UBRRL, temp1 
-	    							; Frame-Format: 8 Bit
+;
+; Initialization
+;
+Reset:
+	clr		Null
+	clr		temp1
+	clr		temp2
+	clr		temp3
+	clr		char
+    ldi     temp1, HIGH(RAMEND)
+    out     SPH, temp1
+    ldi     temp1, LOW(RAMEND)  ; Stackpointer initialisieren
+    out     SPL, temp1
+
+		;*** PORTS ***
+								; PORTD initialisieren
+	ldi     temp1, 0b11111011
+    out     DDRD, temp1
+	ldi     temp1, 0x00
+    out     PORTD, temp1
+
+    ldi     r16,0x00
+    out     PORTD,r16
+ 	
+	;*** USART ***				; Baudrate einstellen
+
+    ldi     temp1, HIGH(UBRR_VAL)
+    out     UBRRH, temp1
+    ldi     temp1, LOW(UBRR_VAL)
+    out     UBRRL, temp1 
+    							; Frame-Format: 8 Bit
+
+    ldi     temp1, (1<<URSEL)|(1<<UCSZ1)|(1<<UCSZ0)
+    out     UCSRC, temp1
+
+    sbi     UCSRB,TXEN          ; TX aktivieren
+	sbi     UCSRB, RXCIE                ; enable Usart interrupt
+    sbi     UCSRB, RXEN                 ; enable RX
  
-	    ldi     temp1, (1<<URSEL)|(1<<UCSZ1)|(1<<UCSZ0)
-	    out     UCSRC, temp1
- 
-	    sbi     UCSRB,TXEN          ; TX aktivieren
-	 
-	 	;*** Timer 1 ***	 
-	                                ; Vergleichswert 
-        ldi     temp1, high( 40000 - 1 )
-        out     OCR1AH, temp1
-        ldi     temp1, low( 40000 - 1 )
-        out     OCR1AL, temp1
-                                    ; CTC Modus einschalten
-                                    ; Vorteiler auf 1
-        ldi     temp1, ( 1 << WGM12 ) | ( 1 << CS11 )
-        out     TCCR1B, temp1
- 
-        ldi     temp1, 1 << OCIE1A  ; OCIE1A: Interrupt bei Timer Compare
-        out     TIMSK, temp1
- 
-        clr     Minuten             ; Die Uhr auf 0 setzen
-        clr     Sekunden
-        clr     Stunden
-        clr     SubCount
-        clr     Flag                ; Flag löschen
- 
-        sei
+ 	;*** Timer 1 ***	 
+                                ; Vergleichswert 
+    ldi     temp1, high( 40000 - 1 )
+    out     OCR1AH, temp1
+    ldi     temp1, low( 40000 - 1 )
+    out     OCR1AL, temp1
+                                ; CTC Modus einschalten
+                                ; Vorteiler auf 1
+    ldi     temp1, ( 1 << WGM12 ) | ( 1 << CS11 )
+    out     TCCR1B, temp1
+
+    ldi     temp1, 1 << OCIE1A  ; OCIE1A: Interrupt bei Timer Compare
+    out     TIMSK, temp1
+
+    clr     Minuten             ; Die Uhr auf 0 setzen
+    clr     Sekunden
+    clr     Stunden
+    clr     SubCount
+    clr     Flag                ; Flag löschen
+
+; Command Buffer initialization
+	
+	Vector	x, CmdBuffer				; set X Pointer to CmdBuffer
+	clr		char						; clear char
+    sei									; enable interrups
+	
+	; clear output and send startup text
+	
+	ZTab	TxtStart, Null				; Startup text
+	rcall	UsartTxtOut	
+
+    sei
 
 ;*********************************************************************************************
 
-loop:
-		
-        cpi     flag,0
-        breq    loop                ; Flag im Interrupt gesetzt?
-        ldi     flag,0              ; Flag löschen
- 
-		rcall	SerOutTime
-		rcall	LineFeed
-	    rcall   sync                        
+;
+; Main programm
+;
+Main:
+	cpi		char, ccr					; check if carriage return (13) received?
+	brne	Main
 
-        rjmp    loop
+	rcall	Cmd							; check received command
+	clr		char
+	rjmp	Main
+
+;loop:
+		
+;        cpi     flag,0
+;        breq    loop                ; Flag im Interrupt gesetzt?
+;        ldi     flag,0              ; Flag löschen
+ 
+;		rcall	SerOutTime
+;		rcall	LineFeed
+;	    rcall   sync                        
+
+;        rjmp    loop
  
 
 
@@ -153,76 +197,108 @@ end_isr:
         reti                        ; das wars. Interrupt ist fertig
 
 
-;***********************************************************************************
 
-serout:
-    sbis    UCSRA,UDRE                  ; Warten bis UDR für das nächste
-                                        ; Byte bereit ist
-    rjmp    serout
-    out     UDR, zeichen
-    ret                                 ; zurück zum Hauptprogramm
- 
-; kleine Pause zum Synchronisieren des Empfängers, falls zwischenzeitlich
-; das Kabel getrennt wurde
-                                    
-sync:
-    ldi     r16,0
-sync_1:
-    ldi     r17,0
-sync_loop:
-    dec     r17
-    brne    sync_loop
-    dec     r16
-    brne    sync_1  
-    ret
 
 SerOutTime:
 	mov		temp1,Stunden
-	rcall 	ConvertToAscii
-	lpm		zeichen, z+
-	rcall	serout
-	lpm		zeichen, z
-	rcall	serout
-	ldi		zeichen, ':'
-	rcall	serout
+	rcall 	Bin2Ascii8
+	mov		char, temp2
+	rcall	UsartOut
+	mov		char, temp1
+	rcall	UsartOut
+
+	ldi		char, ':'
+	rcall	UsartOut
 
 	mov		temp1,Minuten
-	rcall 	ConvertToAscii
-	lpm		zeichen, z+
-	rcall	serout
-	lpm		zeichen, z
-	rcall	serout
-	ldi		zeichen, ':'
-	rcall	serout
+	rcall 	Bin2Ascii8
+	mov		char, temp2
+	rcall	UsartOut
+	mov		char, temp1
+	rcall	UsartOut
+	
+	ldi		char, ':'
+	rcall	UsartOut
 
 	mov		temp1,Sekunden
-	rcall 	ConvertToAscii
-	lpm		zeichen, z+
-	rcall	serout
-	lpm		zeichen, z
-	rcall	serout
-	ret
+	rcall 	Bin2Ascii8
+	mov		char, temp2
+	rcall	UsartOut
+	mov		char, temp1
+	rcall	UsartOut
 
 LineFeed:
-		ldi     zeichen, 10
-	    rcall   serout
-	    ldi     zeichen, 13
-	    rcall   serout
-		ret
-
-ConvertToAscii:
-	Vector	z, Numbers
-	rol		temp1
-	add		r30, temp1
-	clr		temp1
-	adc		r31, temp1
+	ldi     char, 10
+    rcall   UsartOut
+    ldi     char, 13
+    rcall   UsartOut
 	ret
 
+;
+; Commands
+;
+Cmd1:
+	ZTab 	Txt1, Null
+	rcall	UsartTxtOut
+	sbi		DDRD, 7
+	ret
 
-Numbers:
-	.db "00","01","02","03","04","05","06","07","08","09"
-	.db "10","11","12","13","14","15","16","17","18","19"
-	.db "20","21","22","23","24","25","26","27","28","29"
-	.db "30","31","32","33","34","35","36","37","38","39"
-	.db "40","41","42","43","44","45","46","47","48","49"
-	.db "50","51","52","53","54","55","56","57","58","59"
+Cmd2:
+	ZTab 	Txt2, Null
+	rcall	UsartTxtOut
+	cbi		DDRD, 7
+	ret
+
+Cmd3:
+	ZTab 	TxtStart, Null
+	rcall	UsartTxtOut
+	ret
+
+Cmd4:
+	ldi		temp1, 42
+	rcall	Bin2Ascii8
+	mov		char, temp2
+	rcall	UsartOut
+	mov		char, temp1
+	rcall	UsartOut
+	ret
+
+Cmd5:
+	rcall	SerOutTime
+	ret
+
+;
+; Command table
+;
+
+CmdTable:
+	.db "set",ccr .dw Cmd1
+	.db "del",ccr .dw Cmd2
+	.db "clr",ccr .dw Cmd3
+	.db "num",ccr .dw Cmd4
+	.db "tim",ccr .dw Cmd5
+	.db	cnull
+
+;
+; String table
+;
+
+Txt1:
+	.db "excute Command set", clf, ccr, cnull
+
+Txt2:
+	.db "excute Command del", clf, ccr, cnull
+
+TxtStart:
+	.db  cesc,'[','H',cesc,'[','J' ; ANSI Clear screen
+	.db "*** AVR Alarm Clock Test ***", clf, ccr, cnull
+
+
+
+;***************************************************************************
+;* Include Subroutine
+;***************************************************************************
+
+.include "stdlib.asm"
+.include "usart.asm"
+.include "cmd.asm"
