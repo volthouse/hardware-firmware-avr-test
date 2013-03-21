@@ -1,31 +1,34 @@
+;***
+;* usart - for commonly used usart functions
+;*
+;****/
+
 
 ;
-; Sendet das Zeichen > char < auf dem Uart
+; Sends a character (char) to uart
 ;
 UsartOut:
-    sbis    UCSRA,UDRE                  ; Warten bis UDR für das nächste
-                                        ; Byte bereit ist
+    sbis    UCSRA,UDRE                  ; Wait until UDR is ready for the next byte
     rjmp    UsartOut
     out     UDR, char
-    ret                                 ; zurück zum Hauptprogramm
-
-;
-; kleine Pause zum Synchronisieren des Empfängers, falls zwischenzeitlich
-; das Kabel getrennt wurde
-;                                 
-SerialSync:
-    ldi     r16,0
-SerialSync_1:
-    ldi     r17,0
-SerialSync_loop:
-    dec     r17
-    brne    SerialSync_loop
-    dec     r16
-    brne    SerialSync_1  
     ret
 
 ;
-; Sendet null-terminierten Text vom Prg-Spreicher auf den Z zeigt
+; Synchronization
+;                                 
+UsartSync:
+    ldi     r16,0
+UsartSync_1:
+    ldi     r17,0
+UsartSync_loop:
+    dec     r17
+    brne    UsartSync_loop
+    dec     r16
+    brne    UsartSync_1  
+    ret
+
+;
+; Sends null-terminated string (set Z-Pointer to string table in Prog-Mem)
 ;
 UsartTxtOut:
 	lpm		char, z+
@@ -34,7 +37,7 @@ UsartTxtOut:
 	rcall	UsartOut
 	rjmp	UsartTxtOut
 UsartTxtOutExit:
-	rcall   SerialSync
+	rcall   UsartSync
 	ret
 
 
@@ -42,26 +45,26 @@ UsartTxtOutExit:
 ; Uart Rx Interrupt
 ;
 URX_INT:
-    push    temp1						; temp1 auf dem Stack sichern
-	in      temp1, sreg					; SREG sichern
+    push    temp1						; save temp1
+	in      temp1, sreg					; save SREG
     push    temp1
 
-    in      char, UDR                   ; empfangenes Byte lesen,
-					                    ; dadurch wird auch der Interrupt gelöscht
+    in      char, UDR                   ; read received Byte and clear Interrupt Flag
+					                    
     ; TODO: auf Puffer Ende Prüfen !!!!!!!
-	st		x+, char					; Zeichen auf dem Empfangspuffer ablegen
-	rcall	UsartOut					; Zeichen Echo
+	st		x+, char					; store char to reciver buffer
+	rcall	UsartOut					; char echo
 	
-	cpi		char, ccr					; wurde Return empfangen?
-	brne	URX_INT_Exit				; wenn nicht dann Interrupt verlassen
+	cpi		char, ccr					; is char equals return code (13))
+	brne	URX_INT_Exit				; if not goto exit
 	
-	mov		temp1, char					; Zeichen sichern
-	ldi		char, clf					; Linefeed laden
-	rcall	UsartOut					; und ausgeben
-	mov		char, temp1					; Zeichen wiederherstellen
+	mov		temp1, char					; save char temporarily
+	ldi		char, clf					; load line feed char
+	rcall	UsartOut					; send line feed
+	mov		char, temp1					; restore char
 
 URX_INT_Exit:	  
-	pop     temp1
-    out     sreg, temp1					; SREG wiederherstellen
-    pop     temp1						; temp1 wiederherstellen
+	pop     temp1						
+    out     sreg, temp1					; restore SREG
+    pop     temp1						; restore temp1
     reti 

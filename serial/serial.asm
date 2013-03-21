@@ -112,7 +112,7 @@ Cmd3:
 
 Cmd4:
 	ldi		temp1, 42
-	rcall	Bin2Asc8
+	rcall	Bin2Ascii8
 	mov		char, temp2
 	rcall	UsartOut
 	mov		char, temp1
@@ -164,6 +164,6 @@ TxtStart:
 ;* Include Subroutine
 ;***************************************************************************
 
-.include "stdio.asm"
+.include "stdlib.asm"
 .include "usart.asm"
 .include "cmd.asm"

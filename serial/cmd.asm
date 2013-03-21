@@ -1,6 +1,11 @@
+;***
+;* cmd - for commonly used command functions
+;*
+;****/
+
 
 ;
-; Befehle die über den Uart empfangen wurden bearbeiten
+; Check command buffer and execute commands
 ;
 Cmd:
 	ZTab	CmdTable, Null
@@ -18,9 +23,9 @@ CmdCheckChar:
 
 CmdMatch:
 	Vector	x, CmdBuffer
-	lpm     temp1,z+                    ; Low Byte laden und Pointer erhöhen
-    lpm     zh,z                        ; zweites Byte laden
-    mov     zl,temp1                    ; erstes Byte in Z-Pointer kopieren
+	lpm     temp1,z+                    ; load Low Byte and increment Pointer
+    lpm     zh,z                        ; load second Byte
+    mov     zl,temp1                    ; copy first Byte to Z-Pointer 
     ijmp
 
 CmdNext:
