@@ -28,10 +28,14 @@
 .equ BAUD_REAL  = (F_CPU/(16*(UBRR_VAL+1)))     ; real Baudrate
 .equ BAUD_ERROR = ((BAUD_REAL*1000)/BAUD-1000)  ; error (Promille)
  
+.equ CMDBUFFSIZE 	= 10
+.equ CALLBACKSIZE 	= 10
+
 ; Data
 .dseg
-CmdBuffer: .BYTE 10 							; Usart receiver buffer
-
+CmdBuffer: 		.BYTE CMDBUFFSIZE				; Usart receiver buffer
+Callbacks:		.BYTE CALLBACKSIZE
+dummy: .byte 1
 
 .if ((BAUD_ERROR>10) || (BAUD_ERROR<-10))       ; max. +/-10 Promille error
   .error "Systematischer Fehler der Baudrate grösser 1 Prozent und damit zu hoch!"
@@ -45,6 +49,8 @@ CmdBuffer: .BYTE 10 							; Usart receiver buffer
         rjmp    Reset             ; Reset Handler
 .org OC1Aaddr
         rjmp    timer1_compare   ; Timer Compare Handler
+.org OVF0addr
+        rjmp    timer0_overflow   ; Timer overflow
 .org URXCaddr                                   ; Usart Interruptvector
         rjmp URX_INT
 
@@ -62,6 +68,17 @@ Reset:
     out     SPH, temp1
     ldi     temp1, LOW(RAMEND)  ; Stackpointer initialisieren
     out     SPL, temp1
+
+
+	ldi		r16,low(SRAM_Size)		; SRAM löschen (definieren)
+	clr		r17
+	ldi		zl,low(SRAM_Start)
+	ldi		zh,high(SRAM_Start)
+
+L014:
+	st	z+,r17
+	dec	r16
+	brne	L014
 
 		;*** PORTS ***
 								; PORTD initialisieren
@@ -88,7 +105,7 @@ Reset:
 	sbi     UCSRB, RXCIE                ; enable Usart interrupt
     sbi     UCSRB, RXEN                 ; enable RX
  
- 	;*** Timer 1 ***	 
+ 	;*** Timer ***	 
                                 ; Vergleichswert 
     ldi     temp1, high( 40000 - 1 )
     out     OCR1AH, temp1
@@ -98,15 +115,23 @@ Reset:
                                 ; Vorteiler auf 1
     ldi     temp1, ( 1 << WGM12 ) | ( 1 << CS11 )
     out     TCCR1B, temp1
+	
+	ldi		temp1, (1 << CS02) | (1 << CS00)
+	out		TCCR0, temp1
 
-    ldi     temp1, 1 << OCIE1A  ; OCIE1A: Interrupt bei Timer Compare
+    ldi     temp1, (1 << OCIE1A) | (1 << TOIE0)  ; OCIE1A: Interrupt bei Timer Compare
     out     TIMSK, temp1
+
 
     clr     Minuten             ; Die Uhr auf 0 setzen
     clr     Sekunden
     clr     Stunden
     clr     SubCount
     clr     Flag                ; Flag löschen
+
+
+
+
 
 ; Command Buffer initialization
 	
@@ -133,18 +158,6 @@ Main:
 	rcall	Cmd							; check received command
 	clr		char
 	rjmp	Main
-
-;loop:
-		
-;        cpi     flag,0
-;        breq    loop                ; Flag im Interrupt gesetzt?
-;        ldi     flag,0              ; Flag löschen
- 
-;		rcall	SerOutTime
-;		rcall	LineFeed
-;	    rcall   sync                        
-
-;        rjmp    loop
  
 
 
@@ -157,12 +170,13 @@ timer1_compare:                     ; Timer 1 Output Compare Handler
         in      temp1,sreg          ; SREG sichern
  
         inc     SubCount            ; Wenn dies nicht der 100. Interrupt
-        cpi     SubCount, 50       ; ist, dann passiert gar nichts
+        cpi     SubCount, 50        ; ist, dann passiert gar nichts
         brne    end_isr
- 
-		in		temp2, PORTD
-		com		temp2
-		out		PORTD, temp2
+
+		sbic	PIND, 6				; Toggle PIND6
+		cbi		PORTD, 6
+		sbis	PIND, 6
+		sbi		PORTD, 6	
 
                                     ; Überlauf
         clr     SubCount            ; SubCount rücksetzen
@@ -240,13 +254,15 @@ LineFeed:
 Cmd1:
 	ZTab 	Txt1, Null
 	rcall	UsartTxtOut
-	sbi		DDRD, 7
+	;sbi		DDRD, 7
+	rcall 	CBTest
 	ret
 
 Cmd2:
 	ZTab 	Txt2, Null
 	rcall	UsartTxtOut
-	cbi		DDRD, 7
+	;cbi		DDRD, 7
+	rcall	UnregisterCallback
 	ret
 
 Cmd3:
@@ -302,3 +318,4 @@ TxtStart:
 .include "stdlib.asm"
 .include "usart.asm"
 .include "cmd.asm"
+.include "timer0.asm"

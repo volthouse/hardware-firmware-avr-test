@@ -22,7 +22,7 @@ CmdCheckChar:
 	rjmp	CmdCheckChar
 
 CmdMatch:
-	Vector	x, CmdBuffer
+	Vector	x, CmdBuffer				; set x pointer to cmdbuffer
 	lpm     temp1,z+                    ; load Low Byte and increment Pointer
     lpm     zh,z                        ; load second Byte
     mov     zl,temp1                    ; copy first Byte to Z-Pointer 
