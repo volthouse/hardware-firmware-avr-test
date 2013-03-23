@@ -29,13 +29,13 @@
 .equ BAUD_ERROR = ((BAUD_REAL*1000)/BAUD-1000)  ; error (Promille)
  
 .equ CMDBUFFSIZE 	= 10
-.equ CALLBACKSIZE 	= 10
+.equ COUNTERSIZE	= 2
 
 ; Data
 .dseg
-CmdBuffer: 		.BYTE CMDBUFFSIZE				; Usart receiver buffer
-Callbacks:		.BYTE CALLBACKSIZE
-dummy: .byte 1
+CmdBuffer: 			.byte CMDBUFFSIZE				; Usart receiver buffer
+TimerCallbackFlags:	.byte 1
+Counter:			.byte COUNTERSIZE
 
 .if ((BAUD_ERROR>10) || (BAUD_ERROR<-10))       ; max. +/-10 Promille error
   .error "Systematischer Fehler der Baudrate grösser 1 Prozent und damit zu hoch!"
@@ -131,13 +131,10 @@ L014:
 
 
 
-
-
 ; Command Buffer initialization
 	
 	Vector	x, CmdBuffer				; set X Pointer to CmdBuffer
 	clr		char						; clear char
-    sei									; enable interrups
 	
 	; clear output and send startup text
 	
@@ -214,6 +211,9 @@ end_isr:
 
 
 SerOutTime:
+	push	temp1
+	push	temp2
+
 	mov		temp1,Stunden
 	rcall 	Bin2Ascii8
 	mov		char, temp2
@@ -241,11 +241,14 @@ SerOutTime:
 	mov		char, temp1
 	rcall	UsartOut
 
-LineFeed:
+
 	ldi     char, 10
     rcall   UsartOut
     ldi     char, 13
     rcall   UsartOut
+
+	pop		temp2
+	pop		temp1
 	ret
 
 ;
@@ -254,14 +257,14 @@ LineFeed:
 Cmd1:
 	ZTab 	Txt1, Null
 	rcall	UsartTxtOut
-	;sbi		DDRD, 7
-	rcall 	CBTest
+	ldi		temp1, 1
+	rcall 	RegisterCallback
 	ret
 
 Cmd2:
 	ZTab 	Txt2, Null
 	rcall	UsartTxtOut
-	;cbi		DDRD, 7
+	ldi		temp1, 1
 	rcall	UnregisterCallback
 	ret
 
@@ -277,6 +280,9 @@ Cmd4:
 	rcall	UsartOut
 	mov		char, temp1
 	rcall	UsartOut
+
+	ldi		temp1, 2
+	rcall 	RegisterCallback
 	ret
 
 Cmd5:

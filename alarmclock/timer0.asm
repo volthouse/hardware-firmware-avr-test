@@ -1,21 +1,31 @@
 
 
 timer0_overflow:
-	
+		push	temp2
 		push	temp1
         in      temp1,sreg
 		push	temp1
 		push	zh
-		push	zl
-
-		Vector	z, Callbacks
-		ld      temp1,z+                    ; load Low Byte and increment Pointer
-		cpi		temp1, 0
-		breq	timer0_overflow_Exit	
-	    ld      zh,z                        ; load second Byte
-	    mov     zl,temp1                    ; copy first Byte to Z-Pointer 
-	    icall
+		push	zl		
 		
+		Vector	z, TimerCallbackFlags	; load flags
+		ld		temp1, z
+			
+		sbrc	temp1,0
+		rcall	CBDummy
+		sbrc	temp1,1
+		rcall	CBDummy1
+
+		Vector	z, Counter
+		clr		temp2
+timer0_overflow_L01:
+		cpi		temp2, COUNTERSIZE
+		brge	timer0_overflow_Exit		
+		ld		temp1, z
+		inc		temp1
+		st		z+, temp1
+		inc		temp2
+		rjmp	timer0_overflow_L01
 
 timer0_overflow_Exit:
 		pop		zl
@@ -23,19 +33,14 @@ timer0_overflow_Exit:
 		pop		temp1
 		out		sreg,temp1
 		pop		temp1
-
+		pop		temp2
 		reti
 
 
 
 
 CBTest:
-		ldi		zh,high(CBDummy)
-		ldi		zl,low(CBDummy)
-		rcall	RegisterCallback
-
-	
-
+		
 		ret
 
 CBDummy:
@@ -45,29 +50,77 @@ CBDummy:
 		sbi		PORTD, 7
 		ret;
 
+CBDummy1:
+		push	temp1
+		ldi		temp1, 0
+		rcall	GetCounter
+		cpi		temp1, 20
+		brlo	CBDummy_L01
+		ldi		temp1, 0
+		rcall 	ClearCounter
+
+		rcall 	SerOutTime
+		
+CBDummy_L01:
+		pop		temp1
+		ret;
+
 
 RegisterCallback:
-		Vector 	y, Callbacks
-RegisterCallbackNext:
-		ld		temp1, y
-		cpi		temp1, 0
-		breq	RegisterCallbackExit
-		adiw	y, 2
-		rjmp	RegisterCallbackNext	
-
-RegisterCallbackExit:
-		st		y+, zl
-		st		y, zh
+		push	temp2
+		push	zh
+		push	zl
+		
+		Vector	z, TimerCallbackFlags	; load flags
+		ld		temp2, z
+		or		temp2, temp1
+		st		z, temp2
+		
+		pop		zl
+		pop		zh
+		pop		temp2
 		ret
 
 UnregisterCallback:
-		Vector	y, Callbacks
-		ldi		temp1, 0
-		st		y+, temp1
-		st		y, temp1
+		push	temp2
+		push	zh
+		push	zl
+		
+		Vector	z, TimerCallbackFlags	; load flags
+		ld		temp2, z
+		eor		temp2, temp1
+		st		z, temp2
+		
+		pop		zl
+		pop		zh
+		pop		temp2
 		ret
 
 
-TimerCallbacks:
-		.dw CBDummy, cnull
-		.dw dummy, cnull
+GetCounter:
+		push	zh
+		push	zl
+
+		Vector	z, Counter
+		Plus	z, temp1
+		ld		temp1, z
+
+		pop		zl
+		pop		zh
+		ret
+
+ClearCounter:
+		push	temp1
+		push	zh
+		push	zl
+		
+		Vector	z, Counter
+		Plus	z, temp1
+		clr		temp1
+		st		z, temp1
+
+		pop		zl
+		pop		zh
+		pop		temp1
+		ret
+		
