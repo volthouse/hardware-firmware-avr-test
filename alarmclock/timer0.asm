@@ -39,9 +39,6 @@ timer0_overflow_Exit:
 
 
 
-CBTest:
-		
-		ret
 
 CBDummy:
 		sbic	PIND, 7				; Toggel PIND6
@@ -54,7 +51,7 @@ CBDummy1:
 		push	temp1
 		ldi		temp1, 0
 		rcall	GetCounter
-		cpi		temp1, 20
+		cpi		temp1, 200
 		brlo	CBDummy_L01
 		ldi		temp1, 0
 		rcall 	ClearCounter
@@ -63,7 +60,7 @@ CBDummy1:
 		
 CBDummy_L01:
 		pop		temp1
-		ret;
+		ret
 
 
 RegisterCallback:

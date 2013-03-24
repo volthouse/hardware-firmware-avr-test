@@ -37,6 +37,7 @@ CmdBuffer: 			.byte CMDBUFFSIZE				; Usart receiver buffer
 TimerCallbackFlags:	.byte 1
 Counter:			.byte COUNTERSIZE
 
+
 .if ((BAUD_ERROR>10) || (BAUD_ERROR<-10))       ; max. +/-10 Promille error
   .error "Systematischer Fehler der Baudrate grösser 1 Prozent und damit zu hoch!"
 .endif
@@ -74,6 +75,7 @@ Reset:
 	clr		r17
 	ldi		zl,low(SRAM_Start)
 	ldi		zh,high(SRAM_Start)
+
 
 L014:
 	st	z+,r17
@@ -151,7 +153,7 @@ L014:
 Main:
 	cpi		char, ccr					; check if carriage return (13) received?
 	brne	Main
-
+;rcall TestSetCmd
 	rcall	Cmd							; check received command
 	clr		char
 	rjmp	Main
@@ -160,52 +162,7 @@ Main:
 
 ;***********************************************************************************
 
-timer1_compare:                     ; Timer 1 Output Compare Handler
- 
-        push    temp1               ; temp1 1 sichern
-		push	temp2
-        in      temp1,sreg          ; SREG sichern
- 
-        inc     SubCount            ; Wenn dies nicht der 100. Interrupt
-        cpi     SubCount, 50        ; ist, dann passiert gar nichts
-        brne    end_isr
 
-		sbic	PIND, 6				; Toggle PIND6
-		cbi		PORTD, 6
-		sbis	PIND, 6
-		sbi		PORTD, 6	
-
-                                    ; Überlauf
-        clr     SubCount            ; SubCount rücksetzen
-        inc     Sekunden            ; plus 1 Sekunde
-        cpi     Sekunden, 60        ; sind 60 Sekunden vergangen?
-        brne    Ausgabe             ; wenn nicht kann die Ausgabe schon
-                                    ; gemacht werden
- 
-                                    ; Überlauf
-        clr     Sekunden            ; Sekunden wieder auf 0 und dafür
-        inc     Minuten             ; plus 1 Minute
-        cpi     Minuten, 60         ; sind 60 Minuten vergangen ?
-        brne    Ausgabe             ; wenn nicht, -> Ausgabe
- 
-                                    ; Überlauf
-        clr     Minuten             ; Minuten zurücksetzen und dafür
-        inc     Stunden             ; plus 1 Stunde
-        cpi     Stunden, 24         ; nach 24 Stunden, die Stundenanzeige
-        brne    Ausgabe             ; wieder zurücksetzen
- 
-                                    ; Überlauf
-        clr     Stunden             ; Stunden rücksetzen
- 
-Ausgabe:
-        ldi     flag,1              ; Flag setzen, LCD updaten
- 
-end_isr:
- 
-        out     sreg,temp1          ; sreg wieder herstellen
-		pop		temp2
-        pop     temp1
-        reti                        ; das wars. Interrupt ist fertig
 
 
 
@@ -213,6 +170,7 @@ end_isr:
 SerOutTime:
 	push	temp1
 	push	temp2
+	push	char
 
 	mov		temp1,Stunden
 	rcall 	Bin2Ascii8
@@ -247,73 +205,41 @@ SerOutTime:
     ldi     char, 13
     rcall   UsartOut
 
+	pop		char
 	pop		temp2
 	pop		temp1
 	ret
 
-;
-; Commands
-;
-Cmd1:
-	ZTab 	Txt1, Null
-	rcall	UsartTxtOut
-	ldi		temp1, 1
-	rcall 	RegisterCallback
-	ret
 
-Cmd2:
-	ZTab 	Txt2, Null
-	rcall	UsartTxtOut
-	ldi		temp1, 1
-	rcall	UnregisterCallback
-	ret
-
-Cmd3:
-	ZTab 	TxtStart, Null
-	rcall	UsartTxtOut
-	ret
-
-Cmd4:
-	ldi		temp1, 42
-	rcall	Bin2Ascii8
-	mov		char, temp2
-	rcall	UsartOut
-	mov		char, temp1
-	rcall	UsartOut
-
-	ldi		temp1, 2
-	rcall 	RegisterCallback
-	ret
-
-Cmd5:
-	rcall	SerOutTime
-	ret
-
-;
-; Command table
-;
-
-CmdTable:
-	.db "set",ccr .dw Cmd1
-	.db "del",ccr .dw Cmd2
-	.db "clr",ccr .dw Cmd3
-	.db "num",ccr .dw Cmd4
-	.db "tim",ccr .dw Cmd5
-	.db	cnull
 
 ;
 ; String table
 ;
 
 Txt1:
-	.db "excute Command set", clf, ccr, cnull
+	.db "excute Command on", clf, ccr, cnull
 
 Txt2:
-	.db "excute Command del", clf, ccr, cnull
+	.db "excute Command off", clf, ccr, cnull
 
 TxtStart:
 	.db  cesc,'[','H',cesc,'[','J' ; ANSI Clear screen
 	.db "*** AVR Alarm Clock Test ***", clf, ccr, cnull
+
+
+TestSetCmd:
+	Vector	z, CmdBuffer
+	ldi		temp1,'c'
+	st		z+, temp1
+	ldi		temp1,'l'
+	st		z+, temp1
+	ldi		temp1,'r'
+	st		z+, temp1
+	;ldi		temp1,'e'
+	;st		z+, temp1
+	ldi		temp1,'\r'
+	st		z+, temp1
+	ret
 
 
 
@@ -325,3 +251,4 @@ TxtStart:
 .include "usart.asm"
 .include "cmd.asm"
 .include "timer0.asm"
+.include "timer1.asm"
