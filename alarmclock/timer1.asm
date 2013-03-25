@@ -4,7 +4,7 @@
 ;****/
 
 ;
-; Timer 1 interupt
+; Timer 1 interrupt
 ;
 Timer1_Compare_Int:                 ; Timer 1 Output Compare Handler
  

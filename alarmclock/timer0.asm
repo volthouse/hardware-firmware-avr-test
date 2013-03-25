@@ -4,7 +4,7 @@
 ;****/
 
 ;
-; Timer 0 interupt
+; Timer 0 interrupt
 ;
 Timer0_Overflow_Int:
 	push	temp2					; prolog

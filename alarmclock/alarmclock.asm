@@ -135,8 +135,8 @@ ClearSRAM:
 								; Timer 0 set prescaler
 	ldi		temp1, (1 << CS02) | (1 << CS00)
 	out		TCCR0, temp1
-								; Timer 1 enable Compare interupt
-								; Timer 0 enable Overflow interupt
+								; Timer 1 enable Compare interrupt
+								; Timer 0 enable Overflow interrupt
     ldi     temp1, (1 << OCIE1A) | (1 << TOIE0) 
     out     TIMSK, temp1
 
