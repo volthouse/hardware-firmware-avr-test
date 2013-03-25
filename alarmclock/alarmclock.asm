@@ -1,3 +1,9 @@
+;***
+;* AlarmClock - Example
+;*
+;****/
+
+
 .include "m8def.inc"
 .include "macros.inc"
  
@@ -8,7 +14,8 @@
 .def temp3	= r18
 .def char 	= r19                              	; recieved char    
 .def Flag   = r20
- 
+
+; Clock 
 .def SubCount = r21
 .def Sekunden = r22
 .def Minuten  = r23
@@ -18,10 +25,14 @@
 .equ F_CPU 	= 16000000                          ; System clock (Hz)
 .equ BAUD  	= 9600                              ; Baudrate
 
-.equ cesc	= 0x1B								; ESCAPE character
-.equ ccr	= 0x0D								; Carriage return character 
-.equ clf	= 0x0A								; Line feed character
-.equ cnull	= 0x00
+.equ CESC	= 0x1B								; ESCAPE character
+.equ CCR	= 0x0D								; Carriage return character 
+.equ CLF	= 0x0A								; Line feed character
+.equ CNULL	= 0x00
+
+; Timer 0 Callback Flags
+.equ TIMEOUTPUTCALLBACK	= 0
+.equ BEEPCALLBACK		= 1
 
 ; Baudrate calculations
 .equ UBRR_VAL   = ((F_CPU+BAUD*8)/(BAUD*16)-1)  ; round
@@ -33,7 +44,7 @@
 
 ; Data
 .dseg
-CmdBuffer: 			.byte CMDBUFFSIZE				; Usart receiver buffer
+CmdBuffer: 			.byte CMDBUFFSIZE			; Usart receiver buffer
 TimerCallbackFlags:	.byte 1
 Counter:			.byte COUNTERSIZE
 
@@ -47,43 +58,47 @@ Counter:			.byte COUNTERSIZE
 .cseg
 
 .org 0x0000
-        rjmp    Reset             ; Reset Handler
+        rjmp    Reset             	; Reset Handler
 .org OC1Aaddr
-        rjmp    timer1_compare   ; Timer Compare Handler
+        rjmp    Timer1_Compare_Int  ; Timer Compare Handler
 .org OVF0addr
-        rjmp    timer0_overflow   ; Timer overflow
-.org URXCaddr                                   ; Usart Interruptvector
-        rjmp URX_INT
+        rjmp    Timer0_Overflow_Int	; Timer overflow
+.org URXCaddr                       
+        rjmp 	Usart_Rx_Int		; Usart Interrupt
 
  
 ;
 ; Initialization
 ;
 Reset:
+	; Register initialization
 	clr		Null
 	clr		temp1
 	clr		temp2
 	clr		temp3
 	clr		char
+
+	; Stackpointer initialization
+
     ldi     temp1, HIGH(RAMEND)
     out     SPH, temp1
-    ldi     temp1, LOW(RAMEND)  ; Stackpointer initialisieren
+    ldi     temp1, LOW(RAMEND)  
     out     SPL, temp1
 
+	; clear SRAM
 
-	ldi		r16,low(SRAM_Size)		; SRAM löschen (definieren)
+	ldi		r16,low(SRAM_Size)		; ToDo: clear high Ram
 	clr		r17
 	ldi		zl,low(SRAM_Start)
 	ldi		zh,high(SRAM_Start)
 
-
-L014:
+ClearSRAM:
 	st	z+,r17
 	dec	r16
-	brne	L014
+	brne	ClearSRAM
 
-		;*** PORTS ***
-								; PORTD initialisieren
+	; Port initialization
+
 	ldi     temp1, 0b11111011
     out     DDRD, temp1
 	ldi     temp1, 0x00
@@ -92,7 +107,7 @@ L014:
     ldi     r16,0x00
     out     PORTD,r16
  	
-	;*** USART ***				; Baudrate einstellen
+	; Usart initialization
 
     ldi     temp1, HIGH(UBRR_VAL)
     out     UBRRH, temp1
@@ -103,37 +118,37 @@ L014:
     ldi     temp1, (1<<URSEL)|(1<<UCSZ1)|(1<<UCSZ0)
     out     UCSRC, temp1
 
-    sbi     UCSRB,TXEN          ; TX aktivieren
-	sbi     UCSRB, RXCIE                ; enable Usart interrupt
-    sbi     UCSRB, RXEN                 ; enable RX
+    sbi     UCSRB,TXEN          ; activate TX
+	sbi     UCSRB, RXCIE        ; enable Usart interrupt
+    sbi     UCSRB, RXEN         ; enable RX
  
- 	;*** Timer ***	 
-                                ; Vergleichswert 
+ 	; Timer initialization
+                                ; Timer 1 compare value 
     ldi     temp1, high( 40000 - 1 )
     out     OCR1AH, temp1
     ldi     temp1, low( 40000 - 1 )
     out     OCR1AL, temp1
-                                ; CTC Modus einschalten
-                                ; Vorteiler auf 1
+                                ; Timer 1 enable CTC mode
+                                ; Timer 1 set prescaler
     ldi     temp1, ( 1 << WGM12 ) | ( 1 << CS11 )
     out     TCCR1B, temp1
-	
+								; Timer 0 set prescaler
 	ldi		temp1, (1 << CS02) | (1 << CS00)
 	out		TCCR0, temp1
-
-    ldi     temp1, (1 << OCIE1A) | (1 << TOIE0)  ; OCIE1A: Interrupt bei Timer Compare
+								; Timer 1 enable Compare interupt
+								; Timer 0 enable Overflow interupt
+    ldi     temp1, (1 << OCIE1A) | (1 << TOIE0) 
     out     TIMSK, temp1
 
+	; Clock initialization
 
-    clr     Minuten             ; Die Uhr auf 0 setzen
+    clr     Minuten             
     clr     Sekunden
     clr     Stunden
     clr     SubCount
-    clr     Flag                ; Flag löschen
+    clr     Flag                
 
-
-
-; Command Buffer initialization
+	; Command Buffer initialization
 	
 	Vector	x, CmdBuffer				; set X Pointer to CmdBuffer
 	clr		char						; clear char
@@ -153,20 +168,14 @@ L014:
 Main:
 	cpi		char, ccr					; check if carriage return (13) received?
 	brne	Main
-;rcall TestSetCmd
 	rcall	Cmd							; check received command
 	clr		char
 	rjmp	Main
  
 
-
-;***********************************************************************************
-
-
-
-
-
-
+;
+; Time output to Usart
+;
 SerOutTime:
 	push	temp1
 	push	temp2
@@ -175,35 +184,35 @@ SerOutTime:
 	mov		temp1,Stunden
 	rcall 	Bin2Ascii8
 	mov		char, temp2
-	rcall	UsartOut
+	rcall	UsartPutChar
 	mov		char, temp1
-	rcall	UsartOut
+	rcall	UsartPutChar
 
 	ldi		char, ':'
-	rcall	UsartOut
+	rcall	UsartPutChar
 
 	mov		temp1,Minuten
 	rcall 	Bin2Ascii8
 	mov		char, temp2
-	rcall	UsartOut
+	rcall	UsartPutChar
 	mov		char, temp1
-	rcall	UsartOut
+	rcall	UsartPutChar
 	
 	ldi		char, ':'
-	rcall	UsartOut
+	rcall	UsartPutChar
 
 	mov		temp1,Sekunden
 	rcall 	Bin2Ascii8
 	mov		char, temp2
-	rcall	UsartOut
+	rcall	UsartPutChar
 	mov		char, temp1
-	rcall	UsartOut
+	rcall	UsartPutChar
 
 
 	ldi     char, 10
-    rcall   UsartOut
+    rcall   UsartPutChar
     ldi     char, 13
-    rcall   UsartOut
+    rcall   UsartPutChar
 
 	pop		char
 	pop		temp2
@@ -216,36 +225,22 @@ SerOutTime:
 ; String table
 ;
 
+; ToDo: be carefully: number of bytes must be even!
+
 Txt1:
-	.db "excute Command on", clf, ccr, cnull
+	.db "excute Command on", CLF, CCR, CNULL
 
 Txt2:
-	.db "excute Command off", clf, ccr, cnull
+	.db "excute Command off", CLF, CCR, CNULL
 
 TxtStart:
-	.db  cesc,'[','H',cesc,'[','J' ; ANSI Clear screen
-	.db "*** AVR Alarm Clock Test ***", clf, ccr, cnull
+	.db  CESC,'[','H',CESC,'[','J' ; ANSI Clear screen
+	.db "*** AVR Alarm Clock Test ***", CLF, CCR, CNULL
 
 
-TestSetCmd:
-	Vector	z, CmdBuffer
-	ldi		temp1,'c'
-	st		z+, temp1
-	ldi		temp1,'l'
-	st		z+, temp1
-	ldi		temp1,'r'
-	st		z+, temp1
-	;ldi		temp1,'e'
-	;st		z+, temp1
-	ldi		temp1,'\r'
-	st		z+, temp1
-	ret
-
-
-
-;***************************************************************************
-;* Include Subroutine
-;***************************************************************************
+;
+; Include Subroutine
+;
 
 .include "stdlib.asm"
 .include "usart.asm"

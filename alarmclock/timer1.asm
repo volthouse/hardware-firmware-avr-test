@@ -1,4 +1,12 @@
-timer1_compare:                     ; Timer 1 Output Compare Handler
+;***
+;* timer1 - timer1 Clock functions
+;*
+;****/
+
+;
+; Timer 1 interupt
+;
+Timer1_Compare_Int:                 ; Timer 1 Output Compare Handler
  
         push    temp1               ; temp1 1 sichern
 		push	temp2

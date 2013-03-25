@@ -7,46 +7,51 @@
 ;
 ; Check command buffer and execute commands
 ;
+; Subroutine Register Variables
+;	temp1
+;	temp2
+; 	x, z pointer
+
+; ToDo: x pointer is used in usart, mutal destruction?
 Cmd:
 	ZTab	CmdTable, Null
-CmdCompare:
+CmdCompare:								; compare CmdBuffer and CmdTable
 	Vector	x, CmdBuffer
 CmdCheckChar:	
-	lpm		temp1, z+
-	ld		temp2, x+
-	cpi		temp1, cnull		
-	breq	CmdExit
-	cpi		temp1, '\r'
-	breq	CmdMatch
-	cp		temp1, temp2
-	brne	CmdNext
-	rjmp	CmdCheckChar
+	lpm		temp1, z+					; load char from prog mem
+	ld		temp2, x+					; load char from CmdBuffer
+	cpi		temp1, cnull				; if table end,
+	breq	CmdExit						;	exit
+	cpi		temp1, '\r'					; if carriage return,
+	breq	CmdMatch					; 	command match
+	cp		temp1, temp2				; if chars unequal,
+	brne	CmdNext						; 	search next command
+	rjmp	CmdCheckChar				; next char
 
-CmdMatch:
+CmdMatch:								
 	lpm     temp1, z+					; load Low Byte and increment Pointer
-	cpi		temp1, '\r'
-	breq	CmdMatch
+	cpi		temp1, '\r'					; read over carriage return
+	breq	CmdMatch					
 	Vector	x, CmdBuffer				; set x pointer to cmdbuffer
-;	lpm     temp1, z+                   ; load Low Byte and increment Pointer
     lpm     zh,z                        ; load second Byte
     mov     zl,temp1                    ; copy first Byte to Z-Pointer 
     ijmp
 
-CmdNext:
-	cpi		temp1, '\r'
+CmdNext:								; search next command
+	cpi		temp1, '\r'					; read over carriage return
 	breq	CmdSearchCmdEnd
 	lpm		temp1, z+
 	rjmp	CmdNext
 
 CmdSearchCmdEnd:
-	lpm		temp1, z+
+	lpm		temp1, z+					; read over carriage return
 	cpi		temp1, '\r'
 	brne	CmdSearchCmdEndMatch
 	rjmp	CmdSearchCmdEnd
 
 CmdSearchCmdEndMatch:
-	adiw	z, 1
-	rjmp	CmdCompare
+	adiw	z, 1						; set pointer to begin of next command
+	rjmp	CmdCompare					; compare next command
 
 CmdExit:
 	Vector	x, CmdBuffer
@@ -56,38 +61,38 @@ CmdExit:
 ;
 ; Commands
 ;
-Cmd1:
+CmdBeepOn:
 	ZTab 	Txt1, Null
 	rcall	UsartTxtOut
-	ldi		temp1, 1
-	rcall 	RegisterCallback
+	ldi		temp1, 1 << BEEPCALLBACK
+	rcall 	RegisterTimer0Callback
 	ret
 
-Cmd2:
+CmdBeepOff:
 	ZTab 	Txt2, Null
 	rcall	UsartTxtOut
-	ldi		temp1, 1
-	rcall	UnregisterCallback
+	ldi		temp1, 1 << TIMEOUTPUTCALLBACK
+	rcall	UnregisterTimer0Callback
 	ret
 
-Cmd3:
+CmdStartupScreen:
 	ZTab 	TxtStart, Null
 	rcall	UsartTxtOut
 	ret
 
-Cmd4:
+CmdTimeOutputInterval:
 	ldi		temp1, 42
 	rcall	Bin2Ascii8
 	mov		char, temp2
-	rcall	UsartOut
+	rcall	UsartPutChar
 	mov		char, temp1
-	rcall	UsartOut
+	rcall	UsartPutChar
 
-	ldi		temp1, 2
-	rcall 	RegisterCallback
+	ldi		temp1, 1 << TIMEOUTPUTCALLBACK
+	rcall 	RegisterTimer0Callback
 	ret
 
-Cmd5:
+CmdTimeOutput:
 	rcall	SerOutTime
 	ret
 
@@ -96,14 +101,14 @@ Cmd5:
 ;
 ; be carefully: number of bytes must be even, padding with carriage return
 CmdTable:
-	.db "on", '\r', '\r'
-	.dw Cmd1
-	.db "off", '\r'
-	.dw Cmd2
+	.db "beep on", '\r', '\r'	; command name
+	.dw CmdBeepOn				; command function
+	.db "beep off", '\r'
+	.dw CmdBeepOff
 	.db "clr", '\r'
-	.dw Cmd3
+	.dw CmdStartupScreen
 	.db "timer", '\r'
-	.dw Cmd4 
+	.dw CmdTimeOutputInterval
 	.db "time", '\r', '\r'
-	.dw Cmd5
+	.dw CmdTimeOutput
 

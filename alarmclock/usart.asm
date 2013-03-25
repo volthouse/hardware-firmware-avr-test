@@ -7,9 +7,9 @@
 ;
 ; Sends a character (char) to uart
 ;
-UsartOut:
+UsartPutChar:
     sbis    UCSRA,UDRE                  ; Wait until UDR is ready for the next byte
-    rjmp    UsartOut
+    rjmp    UsartPutChar
     out     UDR, char
     ret
 
@@ -34,7 +34,7 @@ UsartTxtOut:
 	lpm		char, z+
 	cpi		char, cnull
 	breq	UsartTxtOutExit
-	rcall	UsartOut
+	rcall	UsartPutChar
 	rjmp	UsartTxtOut
 UsartTxtOutExit:
 	rcall   UsartSync
@@ -42,9 +42,9 @@ UsartTxtOutExit:
 
 
 ;
-; Uart Rx Interrupt
+; Usart Rx Interrupt
 ;
-URX_INT:
+Usart_Rx_Int:
     push    temp1						; save temp1
 	in      temp1, sreg					; save SREG
     push    temp1
@@ -53,17 +53,17 @@ URX_INT:
 					                    
     ; TODO: auf Puffer Ende Prüfen !!!!!!!
 	st		x+, char					; store char to reciver buffer
-	rcall	UsartOut					; char echo
+	rcall	UsartPutChar					; char echo
 	
 	cpi		char, ccr					; is char equals return code (13))
-	brne	URX_INT_Exit				; if not goto exit
+	brne	Usart_Rx_Int_Exit				; if not goto exit
 	
 	mov		temp1, char					; save char temporarily
 	ldi		char, clf					; load line feed char
-	rcall	UsartOut					; send line feed
+	rcall	UsartPutChar					; send line feed
 	mov		char, temp1					; restore char
 
-URX_INT_Exit:	  
+Usart_Rx_Int_Exit:	  
 	pop     temp1						
     out     sreg, temp1					; restore SREG
     pop     temp1						; restore temp1
