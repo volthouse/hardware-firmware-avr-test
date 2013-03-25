@@ -228,14 +228,22 @@ SerOutTime:
 ; ToDo: be carefully: number of bytes must be even!
 
 Txt1:
-	.db "excute Command on", CLF, CCR, CNULL
+	.db "excute Command on ", CLF, CCR, CNULL
 
 Txt2:
 	.db "excute Command off", CLF, CCR, CNULL
 
 TxtStart:
 	.db  CESC,'[','H',CESC,'[','J' ; ANSI Clear screen
-	.db "*** AVR Alarm Clock Test ***", CLF, CCR, CNULL
+	.db "*** AVR Alarm Clock Test ***", CLF, CCR
+	.db "* Commands:                *", CLF, CCR
+	.db "*  on:  Beep on            *", CLF, CCR
+	.db "*  off: Beep off           *", CLF, CCR
+	.db "*  timer on:  Time on      *", CLF, CCR
+	.db "*  timer off: Time off     *", CLF, CCR
+	.db "*  time: current Time      *", CLF, CCR
+	.db "****************************", CLF, CCR
+	.db CNULL
 
 
 ;

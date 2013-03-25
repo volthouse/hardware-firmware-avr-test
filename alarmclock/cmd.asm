@@ -22,7 +22,7 @@ CmdCheckChar:
 	ld		temp2, x+					; load char from CmdBuffer
 	cpi		temp1, cnull				; if table end,
 	breq	CmdExit						;	exit
-	cpi		temp1, '\r'					; if carriage return,
+	cpi		temp1, CCR					; if carriage return,
 	breq	CmdMatch					; 	command match
 	cp		temp1, temp2				; if chars unequal,
 	brne	CmdNext						; 	search next command
@@ -30,7 +30,7 @@ CmdCheckChar:
 
 CmdMatch:								
 	lpm     temp1, z+					; load Low Byte and increment Pointer
-	cpi		temp1, '\r'					; read over carriage return
+	cpi		temp1, CCR					; read over carriage return
 	breq	CmdMatch					
 	Vector	x, CmdBuffer				; set x pointer to cmdbuffer
     lpm     zh,z                        ; load second Byte
@@ -38,14 +38,14 @@ CmdMatch:
     ijmp
 
 CmdNext:								; search next command
-	cpi		temp1, '\r'					; read over carriage return
+	cpi		temp1, CCR					; read over carriage return
 	breq	CmdSearchCmdEnd
 	lpm		temp1, z+
 	rjmp	CmdNext
 
 CmdSearchCmdEnd:
 	lpm		temp1, z+					; read over carriage return
-	cpi		temp1, '\r'
+	cpi		temp1, CCR
 	brne	CmdSearchCmdEndMatch
 	rjmp	CmdSearchCmdEnd
 
@@ -71,7 +71,7 @@ CmdBeepOn:
 CmdBeepOff:
 	ZTab 	Txt2, Null
 	rcall	UsartTxtOut
-	ldi		temp1, 1 << TIMEOUTPUTCALLBACK
+	ldi		temp1, 1 << BEEPCALLBACK
 	rcall	UnregisterTimer0Callback
 	ret
 
@@ -80,17 +80,16 @@ CmdStartupScreen:
 	rcall	UsartTxtOut
 	ret
 
-CmdTimeOutputInterval:
-	ldi		temp1, 42
-	rcall	Bin2Ascii8
-	mov		char, temp2
-	rcall	UsartPutChar
-	mov		char, temp1
-	rcall	UsartPutChar
-
+CmdTimeOutputIntervalOn:
 	ldi		temp1, 1 << TIMEOUTPUTCALLBACK
 	rcall 	RegisterTimer0Callback
 	ret
+
+CmdTimeOutputIntervalOff:
+	ldi		temp1, 1 << TIMEOUTPUTCALLBACK
+	rcall 	UnregisterTimer0Callback
+	ret
+
 
 CmdTimeOutput:
 	rcall	SerOutTime
@@ -101,14 +100,17 @@ CmdTimeOutput:
 ;
 ; be carefully: number of bytes must be even, padding with carriage return
 CmdTable:
-	.db "beep on", '\r', '\r'	; command name
+	.db "on", CCR, CCR	; command name
 	.dw CmdBeepOn				; command function
-	.db "beep off", '\r'
+	.db "off", CCR
 	.dw CmdBeepOff
-	.db "clr", '\r'
+	.db "clr", CCR
 	.dw CmdStartupScreen
-	.db "timer", '\r'
-	.dw CmdTimeOutputInterval
-	.db "time", '\r', '\r'
+	.db "timer on", CCR, CCR
+	.dw CmdTimeOutputIntervalOn
+	.db "timer off", CCR
+	.dw CmdTimeOutputIntervalOff
+	.db "time", CCR, CCR
 	.dw CmdTimeOutput
+	.db CNULL, CNULL
 
